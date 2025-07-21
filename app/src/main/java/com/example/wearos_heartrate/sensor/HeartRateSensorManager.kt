@@ -7,17 +7,18 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 import com.example.wearos_heartrate.BuildConfig
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import okhttp3.Dispatcher
-import org.json.JSONObject
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.time.Instant
 
 class HeartRateSensorManager(private val context: Context) : SensorEventListener {
 
@@ -60,9 +61,13 @@ class HeartRateSensorManager(private val context: Context) : SensorEventListener
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private suspend fun sendHeartRate(heartRate: Float) {
+        val user = FirebaseAuth.getInstance().currentUser
+        val userId = user?.uid ?: "unknown_user"
+
         val json = JSONObject()
-        json.put("device_id", "watch_1")
-        json.put("timestamp", System.currentTimeMillis())
+        json.put("user_id", userId)
+        json.put("device_id", "dotOS")
+        json.put("timestamp", Instant.now().toString())
         json.put("bpm", heartRate)
 
         val body = json.toString().toRequestBody("application/json".toMediaTypeOrNull())
@@ -70,18 +75,21 @@ class HeartRateSensorManager(private val context: Context) : SensorEventListener
         val client = OkHttpClient()
         val request = Request.Builder()
             .url(BuildConfig.SUPABASE_URL)
-            .addHeader(
-                "apikey",
-                BuildConfig.SUPABASE_API_KEY
-            )
-            .addHeader(
-                "Authorization",
-                "Bearer ${BuildConfig.SUPABASE_API_KEY}"
-            )
+            .addHeader("apikey", BuildConfig.SUPABASE_API_KEY)
+            .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_API_KEY}")
             .addHeader("Content-Type", "application/json")
             .post(body)
             .build()
+
         val response = client.newCall(request).execute()
         Log.d("Supabase Sync", "Heart Rate Sent: $heartRate, Response: ${response.code}")
+    }
+
+    fun sendLatestHeartRateManually() {
+        _heartRateFlow.value?.let { bpm ->
+            CoroutineScope(Dispatchers.IO).launch {
+                sendHeartRate(bpm)
+            }
+        }
     }
 }
