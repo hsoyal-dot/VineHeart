@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services")
 }
 
 val SUPABASE_URL = gradleLocalProperties(rootDir, providers).getProperty("SUPABASE_URL", "")
@@ -62,6 +63,8 @@ dependencies {
     implementation(libs.wear.compose.material)
     implementation(libs.guava)
     implementation(libs.okhttp)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -70,3 +73,4 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
